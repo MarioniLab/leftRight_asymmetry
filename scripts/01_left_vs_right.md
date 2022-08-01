@@ -1,6 +1,6 @@
 ---
 title: "<span style='font-size: 28px'>Left-right asymmetric gene expression in the mouse developing heart</style>"
-date: '16 November, 2020'
+date: '30 July, 2022'
 output:
   html_document:
     keep_md: true
@@ -207,6 +207,11 @@ ggplot(tmp, aes(logCPM, logFC, label=gene)) +
   th 
 ```
 
+```
+## Warning: ggrepel: 4 unlabeled data points (too many overlaps). Consider
+## increasing max.overlaps
+```
+
 ![](01_left_vs_right_files/figure-html/mesoderm_degs-1.png)<!-- -->
 
 There are 229 DE genes, with many more (two thirds) expressed higher in the cells from the left side (positive fold-change). Among these are the expected genes (*Lefty1*, *Lefty2*, *Pitx2*).
@@ -229,6 +234,11 @@ perCluster$count <- rowSums(perCluster, na.rm=TRUE)
 perCluster <- perCluster[perCluster$count>0,]
 perCluster$gene <- de.meso[row.names(perCluster),]$gene
 
+## remove fold-change from results df
+de.meso[,3:8] <- t(sapply(1:nrow(de.meso), function(x) 
+  ifelse(is.na(perCluster[x,1:6]), NA, de.meso[x,3:8][!is.na(perCluster[x,1:6])])))
+# use largest fold-change as the summary value
+de.meso$logFC <- apply(de.meso[,3:8], 1, function(x) x[which.max(abs(x))])
 
 ## define the direction of bias
 bias.meso <- ifelse(de.meso[,3:8]>0, "left", "right")
@@ -369,6 +379,11 @@ tmp <- tmp[order(tmp$sig, abs(tmp$logFC), decreasing=TRUE),]
 ggplot(tmp, aes(logCPM, logFC, label=gene)) + geom_point(aes(col=sig)) + scale_color_manual(name = "", values = c("red", "black")) + geom_hline(yintercept = c(-log2(1.3), log2(1.3)), lty=2) + xlab(expression('log'[2]*' mean expression')) + ylab(expression('log'[2]*' fold-change (left / right)')) + geom_text_repel(data=tmp[tmp$sig=="DEG",][1:20,]) + th + ggtitle("Endoderm")
 ```
 
+```
+## Warning: ggrepel: 1 unlabeled data points (too many overlaps). Consider
+## increasing max.overlaps
+```
+
 ![](01_left_vs_right_files/figure-html/endoderm_degs-1.png)<!-- -->
 
 There are 23 genes differentially expressed, with nearly three quarters expressed higher on the right-side cells.
@@ -385,8 +400,13 @@ perCluster[means.scaled[row.names(perCluster),]<0.3] <- NA
 perCluster <- as.data.frame(perCluster)
 perCluster$count <- rowSums(perCluster, na.rm=TRUE)
 perCluster <- perCluster[perCluster$count>0,]
-perCluster$gene <- de.meso[row.names(perCluster),]$gene
+perCluster$gene <- de.endo[row.names(perCluster),]$gene
 
+## remove fold-change from results df
+de.endo[,3:4] <- t(sapply(1:nrow(de.endo), function(x) 
+  ifelse(is.na(perCluster[x,1:2]), NA, de.endo[x,3:4][!is.na(perCluster[x,1:2])])))
+# use largest fold-change as the summary value
+de.endo$logFC <- apply(de.endo[,3:4], 1, function(x) x[which.max(abs(x))])
 
 ## define the direction of bias
 bias.endo <- ifelse(de.endo[,3:4]>0, "left", "right")
@@ -536,8 +556,13 @@ perCluster[means.scaled[row.names(perCluster),]<0.3] <- NA
 perCluster <- as.data.frame(perCluster)
 perCluster$count <- rowSums(perCluster, na.rm=TRUE)
 perCluster <- perCluster[perCluster$count>0,]
-perCluster$gene <- de.meso[row.names(perCluster),]$gene
+perCluster$gene <- de.ecto[row.names(perCluster),]$gene
 
+## remove fold-change from results df
+de.ecto[,3:4] <- t(sapply(1:nrow(de.ecto), function(x) 
+  ifelse(is.na(perCluster[x,1:2]), NA, de.ecto[x,3:4][!is.na(perCluster[x,1:2])])))
+# use largest fold-change as the summary value
+de.ecto$logFC <- apply(de.ecto[,3:4], 1, function(x) x[which.max(abs(x))])
 
 ## define the direction of bias
 bias.ecto <- ifelse(de.ecto[,3:4]>0, "left", "right")
@@ -699,6 +724,14 @@ tmp <- stats[stats$cluster != "cluster5",]
 ggplot(tmp, aes(cluster, abs(FC))) + geom_violin() + geom_boxplot(width=0.1) + th + xlab("") + ylab("|fold-change|")
 ```
 
+```
+## Warning: Removed 5 rows containing non-finite values (stat_ydensity).
+```
+
+```
+## Warning: Removed 5 rows containing non-finite values (stat_boxplot).
+```
+
 ![](01_left_vs_right_files/figure-html/fold-change-1.png)<!-- -->
 
 
@@ -736,13 +769,13 @@ sessionInfo()
 ```
 
 ```
-## R version 4.0.3 (2020-10-10)
+## R version 4.1.0 (2021-05-18)
 ## Platform: x86_64-apple-darwin17.0 (64-bit)
-## Running under: macOS High Sierra 10.13.6
+## Running under: macOS Big Sur 10.16
 ## 
 ## Matrix products: default
-## BLAS:   /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRblas.dylib
-## LAPACK: /Library/Frameworks/R.framework/Versions/4.0/Resources/lib/libRlapack.dylib
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
 ## [1] en_GB.UTF-8/en_GB.UTF-8/en_GB.UTF-8/C/en_GB.UTF-8/en_GB.UTF-8
@@ -752,60 +785,64 @@ sessionInfo()
 ##  [8] datasets  methods   base     
 ## 
 ## other attached packages:
-##  [1] circlize_0.4.11             ComplexHeatmap_2.4.3       
-##  [3] ggrepel_0.8.2               ggpubr_0.4.0               
-##  [5] ggplot2_3.3.2               RColorBrewer_1.1-2         
-##  [7] edgeR_3.30.3                limma_3.44.3               
-##  [9] scran_1.16.0                SingleCellExperiment_1.10.1
-## [11] SummarizedExperiment_1.18.2 DelayedArray_0.14.1        
-## [13] matrixStats_0.57.0          Biobase_2.48.0             
-## [15] GenomicRanges_1.40.0        GenomeInfoDb_1.24.2        
-## [17] IRanges_2.22.2              S4Vectors_0.26.1           
-## [19] BiocGenerics_0.34.0        
+##  [1] circlize_0.4.14             ComplexHeatmap_2.8.0       
+##  [3] ggrepel_0.9.1               ggpubr_0.4.0               
+##  [5] ggplot2_3.3.5               RColorBrewer_1.1-3         
+##  [7] edgeR_3.34.1                limma_3.48.3               
+##  [9] scran_1.20.1                scuttle_1.2.1              
+## [11] SingleCellExperiment_1.14.1 SummarizedExperiment_1.22.0
+## [13] Biobase_2.52.0              GenomicRanges_1.44.0       
+## [15] GenomeInfoDb_1.28.4         IRanges_2.26.0             
+## [17] S4Vectors_0.30.2            BiocGenerics_0.38.0        
+## [19] MatrixGenerics_1.4.3        matrixStats_0.62.0         
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] bitops_1.0-6              tools_4.0.3              
-##  [3] backports_1.2.0           R6_2.5.0                 
-##  [5] irlba_2.3.3               vipor_0.4.5              
-##  [7] colorspace_2.0-0          GetoptLong_1.0.4         
-##  [9] withr_2.3.0               tidyselect_1.1.0         
-## [11] gridExtra_2.3             curl_4.3                 
-## [13] compiler_4.0.3            BiocNeighbors_1.6.0      
-## [15] labeling_0.4.2            scales_1.1.1             
-## [17] stringr_1.4.0             digest_0.6.27            
-## [19] foreign_0.8-80            rmarkdown_2.5            
-## [21] rio_0.5.16                XVector_0.28.0           
-## [23] scater_1.16.2             pkgconfig_2.0.3          
-## [25] htmltools_0.5.0           GlobalOptions_0.1.2      
-## [27] rlang_0.4.8               readxl_1.3.1             
-## [29] DelayedMatrixStats_1.10.1 farver_2.0.3             
-## [31] shape_1.4.5               generics_0.1.0           
-## [33] BiocParallel_1.22.0       dplyr_1.0.2              
-## [35] zip_2.1.1                 car_3.0-10               
-## [37] RCurl_1.98-1.2            magrittr_1.5             
-## [39] BiocSingular_1.4.0        GenomeInfoDbData_1.2.3   
-## [41] Matrix_1.2-18             Rcpp_1.0.5               
-## [43] ggbeeswarm_0.6.0          munsell_0.5.0            
-## [45] abind_1.4-5               viridis_0.5.1            
-## [47] lifecycle_0.2.0           stringi_1.5.3            
-## [49] yaml_2.2.1                carData_3.0-4            
-## [51] zlibbioc_1.34.0           dqrng_0.2.1              
-## [53] forcats_0.5.0             crayon_1.3.4             
-## [55] lattice_0.20-41           splines_4.0.3            
-## [57] cowplot_1.1.0             haven_2.3.1              
-## [59] hms_0.5.3                 locfit_1.5-9.4           
-## [61] knitr_1.30                pillar_1.4.6             
-## [63] igraph_1.2.6              rjson_0.2.20             
-## [65] ggsignif_0.6.0            glue_1.4.2               
-## [67] evaluate_0.14             data.table_1.13.2        
-## [69] png_0.1-7                 vctrs_0.3.4              
-## [71] cellranger_1.1.0          gtable_0.3.0             
-## [73] purrr_0.3.4               tidyr_1.1.2              
-## [75] clue_0.3-57               xfun_0.19                
-## [77] openxlsx_4.2.3            rsvd_1.0.3               
-## [79] broom_0.7.2               rstatix_0.6.0            
-## [81] viridisLite_0.3.0         tibble_3.0.4             
-## [83] beeswarm_0.2.3            cluster_2.1.0            
-## [85] statmod_1.4.35            ellipsis_0.3.1
+##  [1] colorspace_2.0-3          ggsignif_0.6.3           
+##  [3] rjson_0.2.21              ellipsis_0.3.2           
+##  [5] bluster_1.2.1             XVector_0.32.0           
+##  [7] GlobalOptions_0.1.2       BiocNeighbors_1.10.0     
+##  [9] clue_0.3-60               rstudioapi_0.13          
+## [11] farver_2.1.0              fansi_1.0.3              
+## [13] splines_4.1.0             codetools_0.2-18         
+## [15] sparseMatrixStats_1.4.2   doParallel_1.0.17        
+## [17] knitr_1.38                jsonlite_1.8.0           
+## [19] Cairo_1.5-15              broom_0.8.0              
+## [21] cluster_2.1.3             png_0.1-7                
+## [23] compiler_4.1.0            dqrng_0.3.0              
+## [25] backports_1.4.1           assertthat_0.2.1         
+## [27] Matrix_1.4-1              fastmap_1.1.0            
+## [29] cli_3.2.0                 BiocSingular_1.8.1       
+## [31] htmltools_0.5.2           tools_4.1.0              
+## [33] rsvd_1.0.5                igraph_1.3.0             
+## [35] gtable_0.3.0              glue_1.6.2               
+## [37] GenomeInfoDbData_1.2.6    dplyr_1.0.8              
+## [39] Rcpp_1.0.8.3              carData_3.0-5            
+## [41] jquerylib_0.1.4           vctrs_0.4.1              
+## [43] iterators_1.0.14          DelayedMatrixStats_1.14.3
+## [45] xfun_0.30                 stringr_1.4.0            
+## [47] beachmat_2.8.1            lifecycle_1.0.1          
+## [49] irlba_2.3.5               statmod_1.4.36           
+## [51] rstatix_0.7.0             zlibbioc_1.38.0          
+## [53] scales_1.2.0              yaml_2.3.5               
+## [55] gridExtra_2.3             sass_0.4.1               
+## [57] stringi_1.7.6             highr_0.9                
+## [59] foreach_1.5.2             ScaledMatrix_1.0.0       
+## [61] BiocParallel_1.26.2       shape_1.4.6              
+## [63] rlang_1.0.2               pkgconfig_2.0.3          
+## [65] bitops_1.0-7              evaluate_0.15            
+## [67] lattice_0.20-45           purrr_0.3.4              
+## [69] labeling_0.4.2            cowplot_1.1.1            
+## [71] tidyselect_1.1.2          magrittr_2.0.3           
+## [73] R6_2.5.1                  magick_2.7.3             
+## [75] generics_0.1.2            metapod_1.0.0            
+## [77] DelayedArray_0.18.0       DBI_1.1.2                
+## [79] pillar_1.7.0              withr_2.5.0              
+## [81] abind_1.4-5               RCurl_1.98-1.6           
+## [83] tibble_3.1.6              crayon_1.5.1             
+## [85] car_3.0-12                utf8_1.2.2               
+## [87] rmarkdown_2.13            GetoptLong_1.0.5         
+## [89] locfit_1.5-9.5            digest_0.6.29            
+## [91] tidyr_1.2.0               munsell_0.5.0            
+## [93] bslib_0.3.1
 ```
 
