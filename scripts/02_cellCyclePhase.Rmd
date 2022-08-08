@@ -1,0 +1,153 @@
+---
+title: "<span style='font-size: 28px'>Left-right asymmetric gene expression in the mouse developing heart</style>"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+output:
+  html_document:
+    keep_md: true
+    fig_width: 5
+    fig_height: 5
+    fig_caption: yes
+    code_folding: hide
+    toc: true
+    toc_depth: 4
+    toc_float: 
+      collapsed: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(scran)
+library(scater)
+library(reshape2)
+library(RColorBrewer)
+library(ggplot2)
+library(ggpubr)
+
+dir <- "/Users/ibarra01/OneDrive - CRUK Cambridge Institute/github/leftRight_asymmetry/"
+
+palette(brewer.pal(n=12, "Set3")[-c(1:2)])
+
+th <- theme_bw() + theme(axis.text.x = element_text(size=12), axis.title.x = element_text(size=12), axis.text.y = element_text(size=12), axis.title.y = element_text(size=12), axis.ticks.x = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"), panel.border = element_blank(), plot.title = element_text(face="bold", hjust = 0.5))
+```
+
+### Cell cycle stage analysis
+
+During the characterisation of the mouse embryonic heart atlas data (Tyser et al., Science, 2021) we used `cyclone` to infer the cell cycle stage of each single cell. Let's explore this in the context of the left and right sides.
+
+```{r data, fig.width=7, fig.height=5}
+## normalised counts
+sce <- readRDS(paste0(dir, "data/sce_goodQual.NORM.clusters.Rds"))
+row.names(sce) <- uniquifyFeatureNames(ID=row.names(rowData(sce)), names = rowData(sce)$gene)
+
+## inferred phase from previous work
+phase <- read.table(paste0(dir, "data/cellCyclePhase.tsv"))
+# add to coldata
+sce$phase <- phase[match(colnames(sce), phase$V1),2]
+
+## retain only cells with side information
+sce <- sce[,-which(sce$stage %in% c(-1,"LHT"))]
+
+umap <- reducedDim(sce)
+umap$phase <- as.factor(sce$phase)
+o <- sample(1:nrow(umap), replace = FALSE)
+plot(umap$x[o], umap$y[o], 
+     col=ifelse(umap$phase[o] == "G1", "grey60",
+                ifelse(umap$phase[o] == "S", "burlywood2","burlywood4")),
+     pch=16, cex=0.75, axes=FALSE, xlab="", ylab=""); box(bty="l")
+legend("bottomright", legend = c("G1", "S", "G2/M"),
+       pch=16, col=c("grey60","burlywood2","burlywood4"))
+```
+
+When looking at the proportion of cells in each phase, for each cluster, we observe a reduction of cells in **G1** phase for the cells from the right side in the cardiac mesoderm progenitor clusters (Me4-8). There are no differences in the cardiomyocytes from Me3.
+
+```{r proportions, message=FALSE, fig.width=10, fig.height=4}
+df <- data.frame(cluster=sce$clusterAnn, side=sce$side, phase=sce$phase)
+
+left <- prop.table(table(df[df$side=="Left",]$cluster, df[df$side=="Left",]$phase),1)*100
+right <- prop.table(table(df[df$side=="Right",]$cluster, df[df$side=="Right",]$phase),1)*100
+
+df <- as.data.frame(rbind(left, right))
+df$side <- rep(c("left", "right"), each = 12)
+df$cluster <- substr(row.names(df), 1, 3)
+df <- melt(df)
+
+df$variable <- factor(df$variable, levels = rev(c("G1", "S", "G2M")))
+
+ggplot(df, aes(side, value, fill=variable)) + 
+  geom_bar(stat="identity") + 
+  scale_fill_manual(values = rev(c("grey60","burlywood2","burlywood4"))) +
+  facet_wrap(~cluster, ncol=6) +
+  ylab("% cells") +
+  labs(fill="phase") +
+  th
+```
+
+We confirm these observations by testing directly whether the proportion of cells that are not in G1 phase is significantly greater in the right side. This is indeed the case for clusters `Me4-7`.
+
+```{r test}
+## collect numbers
+df <- data.frame(cluster=sce$clusterAnn, side=sce$side, phase=sce$phase)
+
+left <- table(df[df$side=="Left",]$cluster, df[df$side=="Left",]$phase)
+left <- data.frame(G1 = left[,1], non_G1 = rowSums(left[,2:3]))
+right <- table(df[df$side=="Right",]$cluster, df[df$side=="Right",]$phase)
+right <- data.frame(G1 = right[,1], non_G1 = rowSums(right[,2:3]))
+
+## take the left as expected proportions
+props <- prop.table(as.matrix(left), 1)
+
+## test if right is equal
+pvals <- sapply(1:12, function(i) binom.test(x = right[i,'non_G1'], n = sum(right[i,]),
+                                             p = props[i,'non_G1'], alternative = "greater")$p.value)
+pvals <- data.frame(cluster = row.names(props)[1:12], p_value = pvals)
+pvals
+```
+
+Despite the overall number of G1 cells in progenitor clusters being quite low, observing the effect in all clusters increases our confidence in the effect. Furthermore, since the left and right cells were collected from the same embryos, sampling biases are less a concern as if the groups came from independent samples.
+
+Alternatively, to have larger numbers of cells to test, we can aggregate all progenitor clusters, and test them as a single group.
+
+```{r test_joint}
+left <- rbind('cardiomyocytes' = left[7,],
+              'progenitors' = colSums(left[8:12,]))
+right <- rbind('cardiomyocytes' = right[7,],
+               'progenitors' = colSums(right[8:12,]))
+
+## take the left as expected proportions
+props <- prop.table(as.matrix(left), 1)
+
+## test if right is equal
+pvals <- sapply(1:2, function(i) binom.test(x = right[i,'non_G1'], n = sum(right[i,]),
+                                            p = props[i,'non_G1'], alternative = "greater")$p.value)
+pvals <- data.frame(cluster = row.names(props), p_value = round(pvals, 7))
+pvals
+```
+
+---
+
+Full numbers.
+
+Left:
+
+```{r left}
+cbind(
+  table(sce[,sce$side == "Left"]$clusterAnn, sce[,sce$side == "Left"]$phase),
+  prop.table(table(sce[,sce$side == "Left"]$clusterAnn, sce[,sce$side == "Left"]$phase),1)*100
+)
+```
+
+Right:
+
+```{r right}
+cbind(
+  table(sce[,sce$side == "Right"]$clusterAnn, sce[,sce$side == "Right"]$phase),
+  prop.table(table(sce[,sce$side == "Right"]$clusterAnn, sce[,sce$side == "Right"]$phase),1)*100
+)
+```
+
+
+
+```{r info}
+sessionInfo()
+```
+
