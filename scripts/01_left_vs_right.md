@@ -1,6 +1,6 @@
 ---
 title: "<span style='font-size: 28px'>Left-right asymmetric gene expression in the mouse developing heart</style>"
-date: '30 July, 2022'
+date: '08 August, 2022'
 output:
   html_document:
     keep_md: true
@@ -235,8 +235,7 @@ perCluster <- perCluster[perCluster$count>0,]
 perCluster$gene <- de.meso[row.names(perCluster),]$gene
 
 ## remove fold-change from results df
-de.meso[,3:8] <- t(sapply(1:nrow(de.meso), function(x) 
-  ifelse(is.na(perCluster[x,1:6]), NA, de.meso[x,3:8][!is.na(perCluster[x,1:6])])))
+de.meso[,3:8][is.na(perCluster[,1:6])] <- NA
 # use largest fold-change as the summary value
 de.meso$logFC <- apply(de.meso[,3:8], 1, function(x) x[which.max(abs(x))])
 
@@ -403,8 +402,7 @@ perCluster <- perCluster[perCluster$count>0,]
 perCluster$gene <- de.endo[row.names(perCluster),]$gene
 
 ## remove fold-change from results df
-de.endo[,3:4] <- t(sapply(1:nrow(de.endo), function(x) 
-  ifelse(is.na(perCluster[x,1:2]), NA, de.endo[x,3:4][!is.na(perCluster[x,1:2])])))
+de.endo[,3:4][is.na(perCluster[,1:2])] <- NA
 # use largest fold-change as the summary value
 de.endo$logFC <- apply(de.endo[,3:4], 1, function(x) x[which.max(abs(x))])
 
@@ -559,8 +557,7 @@ perCluster <- perCluster[perCluster$count>0,]
 perCluster$gene <- de.ecto[row.names(perCluster),]$gene
 
 ## remove fold-change from results df
-de.ecto[,3:4] <- t(sapply(1:nrow(de.ecto), function(x) 
-  ifelse(is.na(perCluster[x,1:2]), NA, de.ecto[x,3:4][!is.na(perCluster[x,1:2])])))
+de.ecto[,3:4][is.na(perCluster[,1:2])] <- NA
 # use largest fold-change as the summary value
 de.ecto$logFC <- apply(de.ecto[,3:4], 1, function(x) x[which.max(abs(x))])
 
