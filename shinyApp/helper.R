@@ -556,7 +556,6 @@ plotlyGeneOnUMAP_lr <- function(gene="Nodal") {
   # remove cells without side information
   df <- df[!df$side == "Whole",]
   
-  lab <- "UMAP "
   p <- ggplot(df, aes(x, y, colour=log2.exp, label=cluster)) +
     geom_point(size=1, alpha=0.5) +
     scale_color_gradientn(colours = blue_pal) +
@@ -570,9 +569,8 @@ plotlyGeneOnUMAP_lr <- function(gene="Nodal") {
                axis.ticks.y = element_blank(),
                strip.background = element_rect(fill = NA),
                legend.position = "bottom")
-  ggplotly(p, width = 420, height = 600, tooltip = c("colour", "label")) 
-  # %>%
-    # layout( margin = list(l=30, r=10, b=20, t=60) )
+  ggplotly(p, width = 420, height = 600, tooltip = c("colour", "label")) %>%
+    layout( margin = list(l=30, r=10, b=20, t=60) )
 }
 
 expr_boxplot_lr <- function(gene="Nodal") {
@@ -596,14 +594,15 @@ expr_boxplot_lr <- function(gene="Nodal") {
     th + theme(axis.text.x = element_text(angle=270, hjust=0),
                legend.position = "none",
                strip.background = element_rect(fil=NA))
-  fig <- ggplotly(p, width = 350, height = 625) 
+  fig <- ggplotly(p, width = 350, height = 635) 
   fig$x$data <- lapply(fig$x$data, FUN = function(x){
     x$marker$outliercolor = x$line$color # When creating plot p with ggplot if you specify fill = cut use x$fill$color instead of $line$color
     x$marker$color = x$line$color # When creating plot p with ggplot if you specify fill = cut use x$fill$color instead $line$color
     x$marker$line = x$line$color # When creating plot p with ggplot if you specify fill = cut use x$fill$color instead $line$color
     return(x)
   })
-  fig
+  fig %>%
+    layout( margin = list(l=30, r=10, b=20, t=60) )
 }
 
 
